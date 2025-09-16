@@ -124,8 +124,8 @@ fn make(step: *Step, make_options: Step.MakeOptions) !void {
         }
     }
 
-    var output = std.ArrayList(u8).init(arena);
-    const writer = output.writer();
+    var output: std.ArrayList(u8) = .empty;
+    const writer = output.writer(arena);
     try writer.writeAll(preamble);
 
     while (testcases.pop()) |kv| {
@@ -167,9 +167,9 @@ fn collectTest(arena: Allocator, entry: fs.Dir.Walker.Entry, testcases: *std.Str
     var path_components_it = try std.fs.path.componentIterator(entry.path);
     const first_path = path_components_it.first().?;
 
-    var path_components = std.ArrayList([]const u8).init(arena);
+    var path_components: std.ArrayList([]const u8) = .empty;
     while (path_components_it.next()) |component| {
-        try path_components.append(component.name);
+        try path_components.append(arena, component.name);
     }
 
     const remaining_path = try fs.path.join(arena, path_components.items);
@@ -600,34 +600,34 @@ fn emitTest(arena: Allocator, output: *std.ArrayList(u8), testcase: Testcase) !v
     const head = try std.fmt.allocPrint(arena, "test \"{f}\" {{\n", .{
         std.zig.fmtString(testcase.name),
     });
-    try output.appendSlice(head);
+    try output.appendSlice(arena, head);
 
     switch (testcase.result) {
         .skip => {
-            try output.appendSlice(skip_test_template);
+            try output.appendSlice(arena, skip_test_template);
         },
         .none => {
             const body = try std.fmt.allocPrint(arena, no_output_template, .{
                 testcase.path,
             });
-            try output.appendSlice(body);
+            try output.appendSlice(arena, body);
         },
         .expected_output_path => {
             const body = try std.fmt.allocPrint(arena, expect_file_template, .{
                 testcase.path,
                 testcase.result.expected_output_path,
             });
-            try output.appendSlice(body);
+            try output.appendSlice(arena, body);
         },
         .error_expected => {
             const body = try std.fmt.allocPrint(arena, expect_err_template, .{
                 testcase.path,
             });
-            try output.appendSlice(body);
+            try output.appendSlice(arena, body);
         },
     }
 
-    try output.appendSlice("}\n\n");
+    try output.appendSlice(arena, "}\n\n");
 }
 
 fn canAccess(dir: fs.Dir, file_path: []const u8) bool {
